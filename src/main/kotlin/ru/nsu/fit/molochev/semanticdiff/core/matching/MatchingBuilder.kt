@@ -11,14 +11,25 @@ class MatchingBuilder(config: DiffConfiguration) {
     fun match(t1: DiffTreeNode, t2: DiffTreeNode): Matching {
         val matching = Matching()
 
-        val nodesBefore = t1.bfs()
-        val nodesAfter = t2.bfs()
+        val nodesBefore = t1.nodes()
+        val nodesAfter = t2.nodes()
 
         preProcessor.match(nodesBefore, nodesAfter, matching)
         fastMatcher.match(nodesBefore, nodesAfter, matching)
 
-        postProcessor.treeHeight = t1.height()
-        postProcessor.match(t1, matching)
+        var matchedRoot1 = t1
+        if (!matching.contains(t1) && !matching.contains(t2)) {
+            matching.add(t1, t2)
+        } else if (!matching.contains(t1) || !matching.contains(t2)) {
+            matchedRoot1 = t1.copy()
+            matchedRoot1.addChild(t1)
+            val matchedRoot2 = t2.copy()
+            matchedRoot2.addChild(t2)
+            matching.add(matchedRoot1, matchedRoot2)
+        }
+
+        postProcessor.treeHeight = matchedRoot1.height()
+        postProcessor.match(matchedRoot1, matching)
 
         return matching
     }

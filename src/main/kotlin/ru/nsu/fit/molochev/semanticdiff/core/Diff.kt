@@ -1,14 +1,14 @@
 package ru.nsu.fit.molochev.semanticdiff.core
 
-import com.intellij.psi.PsiElement
+import fleet.com.intellij.psi.FleetPsiParser
+import fleet.com.intellij.psi.builder.parse
 import ru.nsu.fit.molochev.semanticdiff.config.DiffConfiguration
 import ru.nsu.fit.molochev.semanticdiff.core.editscript.EditScript
 import ru.nsu.fit.molochev.semanticdiff.core.editscript.EditScriptBuilder
-import ru.nsu.fit.molochev.semanticdiff.core.matching.FastMatcher
 import ru.nsu.fit.molochev.semanticdiff.core.matching.MatchingBuilder
 import ru.nsu.fit.molochev.semanticdiff.utils.toDiffTreeNode
 
-class Diff {
+class Diff(private var parser: FleetPsiParser) {
 
     private var config = DiffConfiguration(0.5, 0.5, 0.5)
 
@@ -20,10 +20,16 @@ class Diff {
         matchingBuilder = MatchingBuilder(config)
     }
 
-    fun diff(treeBefore: PsiElement, treeAfter: PsiElement): EditScript {
-        val t1 = treeBefore.toDiffTreeNode(config)
-        val t2 = treeAfter.toDiffTreeNode(config)
+    fun parser(parser: FleetPsiParser) {
+        this.parser = parser
+    }
 
+    fun diff(textBefore: String, textAfter: String): EditScript {
+        val treeBefore = parser.parse(textBefore)
+        val treeAfter = parser.parse(textAfter)
+
+        val t1 = treeBefore.toDiffTreeNode(config, textBefore)
+        val t2 = treeAfter.toDiffTreeNode(config, textAfter)
         val matching = matchingBuilder.match(t1, t2)
         return editScriptBuilder.buildScript(t1, t2, matching)
     }

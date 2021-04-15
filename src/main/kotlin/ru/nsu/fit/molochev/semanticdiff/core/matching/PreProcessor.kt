@@ -1,12 +1,11 @@
 package ru.nsu.fit.molochev.semanticdiff.core.matching
 
-import ru.nsu.fit.molochev.semanticdiff.config.DiffConfiguration
 import ru.nsu.fit.molochev.semanticdiff.utils.DiffTreeNode
 
 class PreProcessor {
 
     fun match(nodesBefore: List<DiffTreeNode>, nodesAfter: List<DiffTreeNode>, matching: Matching) {
-        val labels = nodesBefore.map(DiffTreeNode::label).distinct()
+        val labels = nodesBefore.filter { it.id != null }.map(DiffTreeNode::label).distinct()
         for (label in labels) {
             val labeledBefore = nodesBefore.filter { it.label == label }
             val labeledAfter = nodesAfter.filter { it.label == label }
@@ -23,10 +22,10 @@ class PreProcessor {
 
                     for (beforeChild in identifiedBefore.children) {
                         val partner = identifiedAfter.children.find { afterChild ->
-                            matching.contains(beforeChild) && matching.contains(afterChild)
+                            !matching.contains(beforeChild) && !matching.contains(afterChild)
                                     && beforeChild.label == afterChild.label
                                     && (!beforeChild.isLeaf() && !afterChild.isLeaf() // TODO: What to do with not exactly equal children?
-                                    || beforeChild.value == afterChild.value)         // TODO: Specific config?
+                                    || beforeChild.text == afterChild.text)         // TODO: Specific config?
                         }
 
                         if (partner != null) {

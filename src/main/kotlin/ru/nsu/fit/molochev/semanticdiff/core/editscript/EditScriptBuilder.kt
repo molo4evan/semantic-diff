@@ -30,25 +30,30 @@ class EditScriptBuilder {
             if (partner == null && parentPartner != null) {
                 // Insert
                 partner = node.copy()
+                println(partner)
                 val pos = findPosition(node) { matching.contains(it) }
                 script.operations.add(Insert(node, parentPartner, pos))
                 matching.add(partner, node)
             } else if (partner != null && parent != null) {
+                println(partner)
                 // Update
-                if (partner.value != node.value) {
-                    script.addAndExecOp(Update(partner, node.value))
+                if (node.isLeaf() && node.text != partner.text) {
+                    script.addAndExecOp(Update(partner, node.value, node.text))
                 }
                 //Move
                 if (!matching.contains(partner.parent, parent) && parentPartner != null) {
                     val k = findPosition(node) { matching.contains(it) }
-                    script.addAndExecOp(Move(partner, parentPartner, k, node.value.textRange))
+                    script.addAndExecOp(Move(partner, parentPartner, k, node.value.startOffset, node.value.endOffset))
                     partner.moveTo(parentPartner, k)
                 }
             }
+            println(partner)
             // Align
-            alignChildren(partner!!, node, script)
+            if (partner != null) {
+                alignChildren(partner, node, script)
+            }
 
-            node.children.forEach(nodes::addFirst)
+            node.children.forEach(nodes::addLast)
         }
     }
 
@@ -86,18 +91,20 @@ class EditScriptBuilder {
 
         for (pair in unordered) {
             val pos = findPosition(pair.second) { el -> ordered.any { it.second === el } }
-            script.addAndExecOp(Move(pair.first, node1, pos, pair.second.value.textRange))
+            script.addAndExecOp(Move(pair.first, node1, pos, pair.second.value.startOffset, pair.second.value.endOffset))
             ordered.add(pair)
         }
     }
 
     private fun deleteUnmatched(node: DiffTreeNode, script: EditScript) {
+        val deletes = mutableListOf<Delete>()
         for (child in node.children) {
-            if (!matching.contains(child)) {
-                script.addAndExecOp(Delete(child))
-            } else {
+            if (!child.isLeaf()) {
                 deleteUnmatched(child, script)
+            } else if (!matching.contains(child)) {
+                deletes.add(Delete(child))
             }
         }
+        deletes.forEach(script::addAndExecOp)
     }
 }

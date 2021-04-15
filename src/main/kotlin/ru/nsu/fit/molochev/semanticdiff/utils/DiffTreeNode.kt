@@ -1,11 +1,11 @@
 package ru.nsu.fit.molochev.semanticdiff.utils
 
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiWhiteSpace
-import com.intellij.psi.tree.IElementType
+import fleet.com.intellij.psi.builder.Node
+import fleet.com.intellij.psi.tree.IElementType
+import fleet.org.jetbrains.kotlin.kdoc.lexer.KDocTokens
 import ru.nsu.fit.molochev.semanticdiff.config.DiffConfiguration
 
-data class DiffTreeNode(var value: PsiElement) {
+data class DiffTreeNode(var value: Node, var text: String) {
     private val _children: MutableList<DiffTreeNode> = arrayListOf()
     val children: List<DiffTreeNode>
         get() = _children
@@ -13,8 +13,8 @@ data class DiffTreeNode(var value: PsiElement) {
     var parent: DiffTreeNode? = null
         private set
 
-    val label: IElementType?
-        get() = value.node?.elementType
+    val label: IElementType
+        get() = value.elementType
 
     var id: String? = null
 
@@ -48,27 +48,30 @@ data class DiffTreeNode(var value: PsiElement) {
         node.addChild(this, k)
     }
 
-    fun bfs(): List<DiffTreeNode> {
-        val result = mutableListOf<DiffTreeNode>()
+    fun nodes(): List<DiffTreeNode> {
+        val result = mutableListOf(this)
         children.forEach {
-            result.addAll(it.bfs())
+            result.addAll(it.nodes())
         }
         return result
     }
 
     fun copy(): DiffTreeNode {
-        if (!isLeaf()) {
-            throw IllegalStateException("Cannot copy not leaf node")
-        }
-        return DiffTreeNode(value)
+        val newNode = DiffTreeNode(value, text)
+        newNode.id = this.id
+        return newNode
     }
 }
 
-fun PsiElement.toDiffTreeNode(config: DiffConfiguration): DiffTreeNode {
-    val node = DiffTreeNode(this)
+fun Node.toDiffTreeNode(config: DiffConfiguration, text: String): DiffTreeNode {
+    val node = DiffTreeNode(this, text.substring(this.startOffset, this.endOffset))
     for (child in children) {
-        if (child !is PsiWhiteSpace) {
-            node.addChild(child.toDiffTreeNode(config))
+        if (!config.elementsToIgnore().contains(child.elementType)) {
+            if (this.elementType == KDocTokens.KDOC) {  // TODO: workaround, fix when parser will be fixed
+                node.addChild(child.toDiffTreeNode(config, node.text))
+            } else {
+                node.addChild(child.toDiffTreeNode(config, text))
+            }
         }
     }
     node.id = config.identify(node)

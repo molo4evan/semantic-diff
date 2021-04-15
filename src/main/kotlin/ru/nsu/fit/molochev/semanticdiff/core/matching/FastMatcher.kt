@@ -16,11 +16,12 @@ class FastMatcher(private val config: DiffConfiguration) {
                 .find(nodesToMatchBefore, nodesToMatchAfter) { x, y -> areNodesEqual(x, y, matching) }
             lcs.forEach(matching::add)
 
-            val unmatched = nodesToMatchBefore.filter(matching::contains)
+            val unmatchedFromBefore = nodesToMatchBefore.filter{ !matching.contains(it) }
+            val unmatchedFromAfter = nodesToMatchAfter.filter { !matching.contains(it) }
             val newlyMatched = mutableListOf<Pair<DiffTreeNode, DiffTreeNode>>()
-            for (node in unmatched) {
-                val forMatch = nodesToMatchAfter
-                    .filter { areNodesEqual(node, it, matching) && !matching.contains(node, it) }
+            for (node in unmatchedFromBefore) {
+                val forMatch = unmatchedFromAfter
+                    .filter { areNodesEqual(node, it, matching) }
                 if (forMatch.size == 1) {   // TODO: Should we just take first? Or introduce 'compare'?
                     val match = forMatch.first()
                     matching.add(node, match)
@@ -53,16 +54,11 @@ class FastMatcher(private val config: DiffConfiguration) {
 
     private fun DiffTreeNode.childrenMatched(matching: Matching) = children.all(matching::contains)
 
-    fun leafLabels(nodes: List<DiffTreeNode>) = nodes
-        .filter(DiffTreeNode::isLeaf)
-        .map(DiffTreeNode::label)
-        .distinct()
-
     fun areNodesEqual(x: DiffTreeNode, y: DiffTreeNode, matching: Matching): Boolean {
         if (x.label != y.label) return false
 
         if (x.isLeaf() && y.isLeaf()) {
-            return x.value == y.value //TODO: f compare parameter?
+            return x.label == y.label && x.text == y.text //TODO: f compare parameter (text fuzziness)?
         }
 
         val maxChildren = max(x.children.size, y.children.size)

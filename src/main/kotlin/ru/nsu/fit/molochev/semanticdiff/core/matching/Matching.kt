@@ -1,6 +1,5 @@
 package ru.nsu.fit.molochev.semanticdiff.core.matching
 
-import com.intellij.util.diff.Diff
 import ru.nsu.fit.molochev.semanticdiff.utils.DiffTreeNode
 
 class Matching {

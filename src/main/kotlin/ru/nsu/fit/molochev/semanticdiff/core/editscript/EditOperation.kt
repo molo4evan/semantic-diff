@@ -1,14 +1,15 @@
 package ru.nsu.fit.molochev.semanticdiff.core.editscript
 
-import com.intellij.openapi.util.TextRange
-import com.intellij.psi.PsiElement
+import fleet.com.intellij.psi.builder.Node
 import ru.nsu.fit.molochev.semanticdiff.utils.DiffTreeNode
 
 sealed class EditOperation {
 
     abstract fun exec()
-    abstract fun leftTextRange(): TextRange?
-    abstract fun rightTextRange(): TextRange?
+    abstract fun leftStart(): Int?
+    abstract fun leftEnd(): Int?
+    abstract fun rightStart(): Int?
+    abstract fun rightEnd(): Int?
 }
 
 class Insert(
@@ -21,16 +22,27 @@ class Insert(
         parent.addChild(node, index)
     }
 
-    override fun leftTextRange(): TextRange? = null
+    override fun leftStart(): Int? = null
 
-    override fun rightTextRange(): TextRange? = node.value.textRange
+    override fun leftEnd(): Int? = null
+
+    override fun rightStart() = node.value.startOffset
+
+    override fun rightEnd() = node.value.endOffset
+
+    override fun toString(): String {
+        return "INSERT ${node.label}(${node.value.startOffset}:${node.value.endOffset})" +
+                " as $index-th child of " +
+                "${parent.label}(${parent.value.startOffset}:${parent.value.endOffset})"
+    }
 }
 
 class Move(
     val node: DiffTreeNode,
     val parent: DiffTreeNode,
     val index: Int,
-    val newPlace: TextRange?
+    val newPlaceStart: Int,
+    val newPlaceEnd: Int
 ): EditOperation() {
 
     override fun exec() {
@@ -38,9 +50,19 @@ class Move(
         parent.addChild(node, index)
     }
 
-    override fun leftTextRange(): TextRange? = node.value.textRange
+    override fun leftStart() = node.value.startOffset
 
-    override fun rightTextRange(): TextRange? = newPlace
+    override fun leftEnd() = node.value.endOffset
+
+    override fun rightStart() = newPlaceStart
+
+    override fun rightEnd() = newPlaceEnd
+
+    override fun toString(): String {
+        return "MOVE ${node.label}(${node.value.startOffset}:${node.value.endOffset})" +
+                " as $index-th child of " +
+                "${parent.label}(${parent.value.startOffset}:${parent.value.endOffset})"
+    }
 }
 
 class Delete(
@@ -56,14 +78,23 @@ class Delete(
         node.parent?.removeChild(node)
     }
 
-    override fun leftTextRange(): TextRange? = node.value.textRange
+    override fun leftStart() = node.value.startOffset
 
-    override fun rightTextRange(): TextRange? = null
+    override fun leftEnd() = node.value.endOffset
+
+    override fun rightStart(): Int? = null
+
+    override fun rightEnd(): Int? = null
+
+    override fun toString(): String {
+        return "DELETE ${node.label}(${node.value.startOffset}:${node.value.endOffset})"
+    }
 }
 
 class Update(
     val node: DiffTreeNode,
-    val value: PsiElement
+    val value: Node,
+    val valueText: String
 ): EditOperation() {
     init {
         if (!node.isLeaf()) {
@@ -75,7 +106,16 @@ class Update(
         node.value = value
     }
 
-    override fun leftTextRange(): TextRange? = node.value.textRange
+    override fun leftStart() = node.value.startOffset
 
-    override fun rightTextRange(): TextRange? = value.textRange
+    override fun leftEnd() = node.value.endOffset
+
+    override fun rightStart() = value.startOffset
+
+    override fun rightEnd() = value.endOffset
+
+    override fun toString(): String {
+        return "UPDATE ${node.label}(${node.value.startOffset}:${node.value.endOffset})" +
+                "to value '${valueText}'"
+    }
 }

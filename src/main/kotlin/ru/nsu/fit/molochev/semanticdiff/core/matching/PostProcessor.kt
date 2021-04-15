@@ -65,10 +65,10 @@ class PostProcessor(
 
         candidates.filter { it.label == node.label }
             .forEach {
-                val maxLength = max(node.value.textLength, it.value.textLength)
+                val maxLength = max(node.text.length, it.text.length)
                 val lcs = LongestCommonSubsequence.find(
-                    node.value.text.toCharArray().asList(),
-                    it.value.text.toCharArray().asList(),
+                    node.text.toCharArray().asList(),
+                    it.text.toCharArray().asList(),
                     Char::equals)
                 val percentage = lcs.size * 1.0 / maxLength
                 if (percentage > maxPercentage) {
